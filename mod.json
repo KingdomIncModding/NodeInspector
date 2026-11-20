@@ -1,0 +1,68 @@
+{
+    "id":  "urakka.kingdominc.nodeinspector",
+    "name":  "Node Inspector",
+    "version":  "0.1.0",
+    "author":  "Urakka",
+    "description":  "For Kingdom Inc game version 1.0.14. Inspect the internal inventory, buffers, soldiers, party members, stats, and equipment of any building in a game-themed retractable list popup (default hotkey F6, customizable), with single-item deletion and confirmed mass purge.",
+    "repository":  {
+                       "platform":  "GitHub",
+                       "owner":  "KingdomIncModding",
+                       "name":  "NodeInspector",
+                       "url":  null,
+                       "branch":  null,
+                       "visibility":  null,
+                       "topics":  [
+                                      "kingdom-inc",
+                                      "kingdom-inc-mod",
+                                      "bepinex",
+                                      "foundation",
+                                      "quality-of-life",
+                                      "ui"
+                                  ],
+                       "latestTag":  null
+                   },
+    "distribution":  {
+                         "nexus":  {
+                                       "game":  "kingdominc",
+                                       "modId":  33,
+                                       "fileId":  null,
+                                       "url":  "https://www.nexusmods.com/kingdominc/mods/33",
+                                       "requirements":  [
+                                                            {
+                                                                "name":  "Foundation",
+                                                                "url":  "https://www.nexusmods.com/kingdominc/mods/18",
+                                                                "minimumVersion":  "0.14.4",
+                                                                "type":  "nexus",
+                                                                "fileId":  8358756
+                                                            },
+                                                            {
+                                                                "name":  "BepInEx 5",
+                                                                "url":  "https://github.com/BepInEx/BepInEx/releases",
+                                                                "minimumVersion":  "5.x",
+                                                                "type":  "offsite"
+                                                            }
+                                                        ],
+                                       "tags":  [
+                                                    "AI-Generated Content",
+                                                    "AI Media",
+                                                    "Quality of Life",
+                                                    "User Interface"
+                                                ],
+                                       "tagsVerified":  false,
+                                       "requirementsVerified":  false
+                                   }
+                     },
+    "development":  {
+                        "framework":  "Foundation",
+                        "language":  "C#",
+                        "target":  "netstandard2.1",
+                        "dependencies":  [
+                                             "BepInEx 5",
+                                             "Foundation 0.14.4"
+                                         ]
+                    },
+    "publishing":  {
+                       "githubReleases":  null,
+                       "nexusMods":  "https://www.nexusmods.com/kingdominc/mods/33"
+                   }
+}
