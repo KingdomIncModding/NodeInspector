@@ -111,34 +111,19 @@ namespace KingdomNodeInspector.UI
             bool isDanger,
             Action onClick)
         {
-            var obj = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
+            var obj = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button), typeof(Outline));
             obj.transform.SetParent(parent, worldPositionStays: false);
 
             var image = obj.GetComponent<Image>();
-            if (isDanger)
-            {
-                image.sprite = null;
-                image.type = Image.Type.Simple;
-                image.color = DangerBg;
-                var outline = obj.AddComponent<Outline>();
-                outline.effectColor = new Color(214f / 255f, 102f / 255f, 88f / 255f, 0.95f);
-                outline.effectDistance = new Vector2(1f, -1f);
-            }
-            else if (ButtonSprite)
-            {
-                image.sprite = ButtonSprite;
-                image.type = Image.Type.Sliced;
-                image.color = Color.white;
-            }
-            else
-            {
-                image.sprite = null;
-                image.type = Image.Type.Simple;
-                image.color = ButtonNeutral;
-                var outline = obj.AddComponent<Outline>();
-                outline.effectColor = Brass;
-                outline.effectDistance = new Vector2(1f, -1f);
-            }
+            image.sprite = null;
+            image.type = Image.Type.Simple;
+            image.color = isDanger ? DangerBg : ButtonNeutral;
+
+            var outline = obj.GetComponent<Outline>();
+            outline.effectColor = isDanger
+                ? new Color(214f / 255f, 102f / 255f, 88f / 255f, 0.95f)
+                : Brass;
+            outline.effectDistance = new Vector2(1f, -1f);
 
             var button = obj.GetComponent<Button>();
             button.targetGraphic = image;
@@ -146,10 +131,10 @@ namespace KingdomNodeInspector.UI
             button.transition = Selectable.Transition.ColorTint;
             var colors = button.colors;
             colors.normalColor = Color.white;
-            colors.highlightedColor = isDanger ? new Color(1.22f, 1.15f, 1.15f, 1f) : new Color(1f, 0.94f, 0.82f, 1f);
-            colors.pressedColor = isDanger ? new Color(0.82f, 0.72f, 0.72f, 1f) : new Color(0.82f, 0.72f, 0.56f, 1f);
+            colors.highlightedColor = isDanger ? new Color(1.22f, 1.14f, 1.14f, 1f) : new Color(1.22f, 1.14f, 1.02f, 1f);
+            colors.pressedColor = isDanger ? new Color(0.82f, 0.72f, 0.72f, 1f) : new Color(0.82f, 0.74f, 0.64f, 1f);
             colors.selectedColor = colors.highlightedColor;
-            colors.disabledColor = new Color(0.55f, 0.52f, 0.50f, 0.55f);
+            colors.disabledColor = new Color(0.55f, 0.52f, 0.50f, 0.45f);
             button.colors = colors;
 
             button.onClick.AddListener(() =>
@@ -161,8 +146,10 @@ namespace KingdomNodeInspector.UI
 
             var text = CreateText(obj.transform, "Label", label, fontSize, isDanger ? DangerInk : Ink);
             text.alignment = TextAlignmentOptions.Center;
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+            text.overflowMode = TextOverflowModes.Ellipsis;
             StretchFull(text.rectTransform);
-            text.margin = new Vector4(8f, 2f, 8f, 2f);
+            text.margin = new Vector4(6f, 2f, 6f, 2f);
 
             return button;
         }

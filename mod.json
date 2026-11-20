@@ -1,7 +1,7 @@
 {
     "id":  "urakka.kingdominc.nodeinspector",
     "name":  "Node Inspector",
-    "version":  "0.1.0",
+    "version":  "0.1.1",
     "author":  "Urakka",
     "description":  "For Kingdom Inc game version 1.0.14. Inspect the internal inventory, buffers, soldiers, party members, stats, and equipment of any building in a game-themed retractable list popup (default hotkey F6, customizable), with single-item deletion and confirmed mass purge.",
     "repository":  {
@@ -19,13 +19,13 @@
                                       "quality-of-life",
                                       "ui"
                                   ],
-                       "latestTag":  null
+                       "latestTag":  "v0.1.0"
                    },
     "distribution":  {
                          "nexus":  {
                                        "game":  "kingdominc",
                                        "modId":  33,
-                                       "fileId":  null,
+                                       "fileId":  8426706,
                                        "url":  "https://www.nexusmods.com/kingdominc/mods/33",
                                        "requirements":  [
                                                             {
@@ -49,7 +49,7 @@
                                                     "User Interface"
                                                 ],
                                        "tagsVerified":  false,
-                                       "requirementsVerified":  false
+                                       "requirementsVerified":  true
                                    }
                      },
     "development":  {
@@ -62,7 +62,7 @@
                                          ]
                     },
     "publishing":  {
-                       "githubReleases":  null,
+                       "githubReleases":  "https://github.com/KingdomIncModding/NodeInspector/releases/tag/v0.1.0",
                        "nexusMods":  "https://www.nexusmods.com/kingdominc/mods/33"
                    }
 }

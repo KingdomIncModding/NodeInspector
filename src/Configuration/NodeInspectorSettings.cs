@@ -10,13 +10,13 @@ namespace KingdomNodeInspector.Configuration
         private readonly ConfigFile config;
 
         public ConfigEntry<Key> InspectKeyEntry { get; }
-        public ConfigEntry<bool> ShowModBarButtonEntry { get; }
+        public ConfigEntry<bool> AutoRefreshEntry { get; }
         public ConfigEntry<float> RefreshIntervalEntry { get; }
         public ConfigEntry<bool> ConfirmSingleDeleteEntry { get; }
 
         public Key InspectKey => InspectKeyEntry.Value;
-        public bool ShowModBarButton => ShowModBarButtonEntry.Value;
-        public float RefreshInterval => Mathf.Clamp(RefreshIntervalEntry.Value, 0.2f, 2.0f);
+        public bool AutoRefresh => AutoRefreshEntry.Value;
+        public float RefreshInterval => Mathf.Clamp(RefreshIntervalEntry.Value, 1.0f, 10.0f);
         public bool ConfirmSingleDelete => ConfirmSingleDeleteEntry.Value;
 
         public NodeInspectorSettings(ConfigFile config)
@@ -29,24 +29,24 @@ namespace KingdomNodeInspector.Configuration
                 Key.F6,
                 "Keyboard shortcut to inspect the building currently under the mouse cursor.");
 
-            ShowModBarButtonEntry = config.Bind(
+            AutoRefreshEntry = config.Bind(
                 "General",
-                "ShowModBarButton",
-                true,
-                "Show a quick Inspect button in the top Mod Bar.");
+                "AutoRefreshWhileOpen",
+                false,
+                "Automatically refresh the open inspector list on a timer. Disabled by default so entries stay steady while viewing; use the Refresh button anytime.");
 
             RefreshIntervalEntry = config.Bind(
                 "General",
-                "RefreshIntervalSeconds",
-                0.5f,
+                "AutoRefreshIntervalSeconds",
+                3.0f,
                 new ConfigDescription(
-                    "How frequently the inspector refreshes live node contents while open (seconds).",
-                    new AcceptableValueRange<float>(0.2f, 2.0f)));
+                    "Interval between automatic refreshes when Auto-Refresh is enabled (seconds).",
+                    new AcceptableValueRange<float>(1.0f, 10.0f)));
 
             ConfirmSingleDeleteEntry = config.Bind(
                 "Safety",
-                "ConfirmSingleDelete",
-                false,
+                "ConfirmItemDelete",
+                true,
                 "Require confirmation before deleting a single item. Mass purge always asks for confirmation.");
         }
 
@@ -59,18 +59,18 @@ namespace KingdomNodeInspector.Configuration
             Save();
         }
 
-        public void SetShowModBarButton(bool visible)
+        public void SetAutoRefresh(bool enabled)
         {
-            if (ShowModBarButtonEntry.Value == visible)
+            if (AutoRefreshEntry.Value == enabled)
                 return;
 
-            ShowModBarButtonEntry.Value = visible;
+            AutoRefreshEntry.Value = enabled;
             Save();
         }
 
         public void SetRefreshInterval(float seconds)
         {
-            float clamped = Mathf.Clamp(seconds, 0.2f, 2.0f);
+            float clamped = Mathf.Clamp(seconds, 1.0f, 10.0f);
             if (Mathf.Approximately(RefreshIntervalEntry.Value, clamped))
                 return;
 

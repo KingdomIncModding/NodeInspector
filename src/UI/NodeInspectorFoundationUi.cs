@@ -1,7 +1,6 @@
 using System;
 using KingdomFoundation.Api;
 using KingdomNodeInspector.Core;
-using UnityEngine;
 
 namespace KingdomNodeInspector.UI
 {
@@ -9,9 +8,6 @@ namespace KingdomNodeInspector.UI
     {
         private readonly NodeInspectorPlugin plugin;
         private FoundationModContext context;
-        private NodeInspectorModBarElement barElement;
-        private IModBarRegistration barRegistration;
-        private NodeInspectorModBarView activeBarView;
         private IModConfigButton hotkeyButton;
 
         public NodeInspectorFoundationUi(NodeInspectorPlugin plugin)
@@ -25,7 +21,6 @@ namespace KingdomNodeInspector.UI
             {
                 context = FoundationApi.ForMod(NodeInspectorPlugin.PluginId);
                 RegisterSettings();
-                RegisterModBar();
             }
             catch
             {
@@ -34,40 +29,16 @@ namespace KingdomNodeInspector.UI
             }
         }
 
-        public void SyncModBar()
-        {
-            if (barElement != null)
-                barElement.IsVisible = plugin.Settings.ShowModBarButton;
-
-            activeBarView?.Refresh();
-            barRegistration?.Refresh();
-        }
-
         public void UpdateHotkeyButtonText(string text)
         {
             if (hotkeyButton != null)
                 hotkeyButton.ButtonText = text;
-            activeBarView?.Refresh();
-        }
-
-        internal void SetActiveBarView(NodeInspectorModBarView view)
-        {
-            activeBarView = view;
-        }
-
-        internal void ClearActiveBarView(NodeInspectorModBarView view)
-        {
-            if (ReferenceEquals(activeBarView, view))
-                activeBarView = null;
         }
 
         public void Dispose()
         {
             context?.Dispose();
             context = null;
-            barElement = null;
-            barRegistration = null;
-            activeBarView = null;
             hotkeyButton = null;
         }
 
@@ -88,22 +59,18 @@ namespace KingdomNodeInspector.UI
             section.AddText("General", isHeader: true);
 
             section.AddToggle(
-                "Show Mod Bar Button",
-                settings.ShowModBarButton,
-                val =>
-                {
-                    settings.SetShowModBarButton(val);
-                    SyncModBar();
-                },
-                getter: () => settings.ShowModBarButton);
+                "Auto-Refresh While Open",
+                settings.AutoRefresh,
+                val => settings.SetAutoRefresh(val),
+                getter: () => settings.AutoRefresh);
 
             section.AddSlider(
-                "Live Refresh Interval",
-                0.2f,
-                2.0f,
+                "Auto-Refresh Interval",
+                1.0f,
+                10.0f,
                 settings.RefreshInterval,
                 val => settings.SetRefreshInterval(val),
-                step: 0.1f,
+                step: 0.5f,
                 getter: () => settings.RefreshInterval,
                 formatValue: val => $"{val:0.0}s");
 
@@ -114,19 +81,6 @@ namespace KingdomNodeInspector.UI
                 settings.ConfirmSingleDelete,
                 val => settings.SetConfirmSingleDelete(val),
                 getter: () => settings.ConfirmSingleDelete);
-        }
-
-        private void RegisterModBar()
-        {
-            if (FoundationApi.ModBar == null)
-                return;
-
-            barElement = new NodeInspectorModBarElement(plugin, this)
-            {
-                IsVisible = plugin.Settings.ShowModBarButton
-            };
-
-            barRegistration = context.Register(barElement);
         }
     }
 }

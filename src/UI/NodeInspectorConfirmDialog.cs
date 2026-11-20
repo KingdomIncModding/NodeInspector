@@ -54,9 +54,8 @@ namespace KingdomNodeInspector.UI
             layout.childForceExpandWidth = true;
             layout.childForceExpandHeight = false;
 
-            titleText = theme.CreateText(content.transform, "Title", "Confirm Purge", 20f, NodeInspectorTheme.Gold);
+            titleText = theme.CreateText(content.transform, "Title", "Confirm Purge", 18f, NodeInspectorTheme.Gold);
             titleText.alignment = TextAlignmentOptions.Center;
-            titleText.fontStyle = FontStyles.Bold;
             var titleLe = titleText.gameObject.AddComponent<LayoutElement>();
             titleLe.preferredHeight = 28f;
             titleLe.minHeight = 28f;

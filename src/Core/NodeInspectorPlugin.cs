@@ -1,4 +1,3 @@
-using System;
 using Assets.Source.Flow;
 using BepInEx;
 using KingdomFoundation.Api;
@@ -20,19 +19,17 @@ namespace KingdomNodeInspector.Core
     {
         public const string PluginId = "urakka.kingdominc.nodeinspector";
         public const string PluginName = "Node Inspector";
-        public const string PluginVersion = "0.1.0";
+        public const string PluginVersion = "0.1.1";
 
         public static NodeInspectorPlugin Instance { get; private set; }
         public NodeInspectorSettings Settings { get; private set; }
 
         public bool IsPopupOpen => activePopup != null;
-        public bool IsInspectPickMode => inspectPickMode;
 
         private NodeInspectorHooks hooks;
         private NodeInspectorFoundationUi foundationUi;
         private NodeInspectorPopup activePopup;
         private bool listeningForHotkey;
-        private bool inspectPickMode;
         private float lastHotkeyTime;
 
         private void Awake()
@@ -88,65 +85,15 @@ namespace KingdomNodeInspector.Core
             foundationUi?.UpdateHotkeyButtonText("[ Press Key... ]");
         }
 
-        public void ToggleInspectPickMode(bool fromUser)
-        {
-            if (activePopup)
-            {
-                CloseInspector();
-                return;
-            }
-
-            SetInspectPickMode(!inspectPickMode, fromUser);
-        }
-
-        public void SetInspectPickMode(bool enabled, bool fromUser)
-        {
-            if (inspectPickMode == enabled)
-                return;
-
-            inspectPickMode = enabled;
-            foundationUi?.SyncModBar();
-
-            if (fromUser)
-            {
-                ShowStatus(enabled
-                    ? "Node Inspector: Click any building to inspect its internals (Esc / Right-Click to cancel)."
-                    : "Node Inspector: Pick mode cancelled.");
-            }
-        }
-
-        public bool TryInspectFromPickClick()
-        {
-            FlowElement hovered = NodeInventoryAccessor.FindHoveredBuilding();
-            if (hovered == null)
-                return false;
-
-            SetInspectPickMode(false, fromUser: false);
-            OpenInspector(hovered);
-            return true;
-        }
-
         public void OpenInspector(FlowElement element)
         {
             if (element == null)
                 return;
 
             if (activePopup)
-            {
                 activePopup.InspectTarget(element);
-            }
             else
-            {
                 activePopup = NodeInspectorPopup.Open(element, Settings, OnPopupClosed);
-            }
-
-            foundationUi?.SyncModBar();
-        }
-
-        private void OnPopupClosed()
-        {
-            activePopup = null;
-            foundationUi?.SyncModBar();
         }
 
         public void CloseInspector()
@@ -156,30 +103,16 @@ namespace KingdomNodeInspector.Core
                 activePopup.Close();
                 activePopup = null;
             }
-
-            if (inspectPickMode)
-                inspectPickMode = false;
-
-            foundationUi?.SyncModBar();
         }
 
         public bool HandleEscapePressed()
         {
-            if (activePopup)
-            {
-                bool handled = activePopup.HandleEscape();
-                if (!activePopup)
-                    foundationUi?.SyncModBar();
-                return handled;
-            }
+            return activePopup && activePopup.HandleEscape();
+        }
 
-            if (inspectPickMode)
-            {
-                SetInspectPickMode(false, fromUser: false);
-                return true;
-            }
-
-            return false;
+        private void OnPopupClosed()
+        {
+            activePopup = null;
         }
 
         private void HandleInspectHotkey()
@@ -215,7 +148,6 @@ namespace KingdomNodeInspector.Core
                 return;
             }
 
-            SetInspectPickMode(false, fromUser: false);
             OpenInspector(hovered);
         }
 

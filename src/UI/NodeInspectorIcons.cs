@@ -13,7 +13,6 @@ namespace KingdomNodeInspector.UI
         private static Sprite trash;
         private static Sprite close;
         private static Sprite refresh;
-        private static Sprite inspect;
 
         public static Sprite ChevronRight => chevronRight ??= BuildSprite(new[]
         {
@@ -95,22 +94,6 @@ namespace KingdomNodeInspector.UI
             "....####...."
         });
 
-        public static Sprite Inspect => inspect ??= BuildSprite(new[]
-        {
-            "...#####....",
-            "..##...##...",
-            ".##.....##..",
-            ".#.......#..",
-            ".#.......#..",
-            ".##.....##..",
-            "..##...##...",
-            "...#####....",
-            ".......##...",
-            "........##..",
-            ".........##.",
-            "..........#."
-        });
-
         public static void Release()
         {
             for (int i = 0; i < Sprites.Count; i++)
@@ -132,7 +115,6 @@ namespace KingdomNodeInspector.UI
             trash = null;
             close = null;
             refresh = null;
-            inspect = null;
         }
 
         private static Sprite BuildSprite(string[] rows)

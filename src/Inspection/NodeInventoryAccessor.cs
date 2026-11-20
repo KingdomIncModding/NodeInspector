@@ -235,6 +235,42 @@ namespace KingdomNodeInspector.Inspection
             return removed;
         }
 
+        public static int PurgeBySection(FlowElement element, NodeStorageSection section)
+        {
+            if (element == null)
+                return 0;
+
+            var snapshot = CollectItems(element);
+            int removed = 0;
+            for (int i = snapshot.Count - 1; i >= 0; i--)
+            {
+                if (GetSection(snapshot[i].Kind) == section && TryRemove(element, snapshot[i]))
+                    removed++;
+            }
+
+            return removed;
+        }
+
+        public static NodeStorageSection GetSection(NodeStoredItemKind kind)
+        {
+            return kind switch
+            {
+                NodeStoredItemKind.InputBuffer => NodeStorageSection.Inputs,
+                NodeStoredItemKind.OutputBuffer => NodeStorageSection.Outputs,
+                _ => NodeStorageSection.Internal
+            };
+        }
+
+        public static string GetSectionLabel(NodeStorageSection section)
+        {
+            return section switch
+            {
+                NodeStorageSection.Inputs => "Inputs",
+                NodeStorageSection.Outputs => "Outputs",
+                _ => "Internal"
+            };
+        }
+
         public static string GetKindGroupLabel(NodeStoredItemKind kind)
         {
             return kind switch

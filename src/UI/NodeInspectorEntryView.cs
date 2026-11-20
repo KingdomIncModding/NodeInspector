@@ -76,7 +76,7 @@ namespace KingdomNodeInspector.UI
             });
 
             var hLayout = header.GetComponent<HorizontalLayoutGroup>();
-            hLayout.padding = new RectOffset(10, 8, 5, 5);
+            hLayout.padding = new RectOffset(22, 8, 5, 5);
             hLayout.spacing = 10f;
             hLayout.childAlignment = TextAnchor.MiddleLeft;
             hLayout.childControlWidth = true;
@@ -153,20 +153,10 @@ namespace KingdomNodeInspector.UI
 
             var nameText = theme.CreateText(block.transform, "Name", displayName, 16f, NodeInspectorTheme.Ink);
             nameText.alignment = TextAlignmentOptions.MidlineLeft;
+            nameText.textWrappingMode = TextWrappingModes.NoWrap;
             var nameLe = nameText.gameObject.AddComponent<LayoutElement>();
             nameLe.flexibleWidth = 1f;
             nameLe.minWidth = 100f;
-
-            string badge = BuildCompactSummaryTag(entry, details);
-            if (!string.IsNullOrEmpty(badge))
-            {
-                var badgeText = theme.CreateText(block.transform, "SummaryTag", badge, 13f, NodeInspectorTheme.SecondaryInk);
-                badgeText.alignment = TextAlignmentOptions.MidlineRight;
-                badgeText.overflowMode = TextOverflowModes.Ellipsis;
-                var badgeLe = badgeText.gameObject.AddComponent<LayoutElement>();
-                badgeLe.preferredWidth = 185f;
-                badgeLe.minWidth = 80f;
-            }
         }
 
         private static void BuildRowActions(
@@ -212,7 +202,7 @@ namespace KingdomNodeInspector.UI
             drawer.GetComponent<Image>().color = NodeInspectorTheme.Drawer;
 
             var hLayout = drawer.GetComponent<HorizontalLayoutGroup>();
-            hLayout.padding = new RectOffset(22, 14, 10, 12);
+            hLayout.padding = new RectOffset(34, 14, 10, 12);
             hLayout.spacing = 14f;
             hLayout.childAlignment = TextAnchor.UpperLeft;
             hLayout.childControlWidth = true;
@@ -546,12 +536,11 @@ namespace KingdomNodeInspector.UI
 
         private static void AddSectionLabel(Transform parent, NodeInspectorTheme theme, string label)
         {
-            var text = theme.CreateText(parent, "Section_" + label, label, 13f, NodeInspectorTheme.Gold);
-            text.fontStyle = FontStyles.Bold;
+            var text = theme.CreateText(parent, "Section_" + label, label, 13.5f, NodeInspectorTheme.Gold);
             text.alignment = TextAlignmentOptions.MidlineLeft;
             var le = text.gameObject.AddComponent<LayoutElement>();
-            le.preferredHeight = 18f;
-            le.minHeight = 18f;
+            le.preferredHeight = 20f;
+            le.minHeight = 20f;
         }
 
         private static void AddWrappedLine(Transform parent, NodeInspectorTheme theme, string value, float fontSize, Color color)
@@ -560,23 +549,6 @@ namespace KingdomNodeInspector.UI
             text.alignment = TextAlignmentOptions.TopLeft;
             text.textWrappingMode = TextWrappingModes.Normal;
             text.overflowMode = TextOverflowModes.Overflow;
-        }
-
-        private static string BuildCompactSummaryTag(NodeStoredItem entry, NodeItemDetails details)
-        {
-            if (details != null && details.IsCombatant)
-            {
-                string hp = $"HP {Mathf.RoundToInt(details.Health01 * 100f)}%";
-                return $"{entry.SlotLabel}  •  {hp}";
-            }
-
-            if (details != null)
-            {
-                int q = Mathf.RoundToInt(details.Quality * 100f);
-                return q != 100 ? $"{entry.SlotLabel}  •  {q}%" : entry.SlotLabel;
-            }
-
-            return entry.SlotLabel;
         }
 
         private static string FormatValue(long value)

@@ -1,21 +1,28 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Assets.Source.Flow;
 using KingdomFoundation.Api;
 using KingdomNodeInspector.Configuration;
 using KingdomNodeInspector.Inspection;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace KingdomNodeInspector.UI
 {
     internal sealed class NodeInspectorPopup : MonoBehaviour
     {
+        private static readonly NodeStorageSection[] SectionOrder =
+        {
+            NodeStorageSection.Inputs,
+            NodeStorageSection.Outputs,
+            NodeStorageSection.Internal
+        };
+
+        private readonly HashSet<NodeStorageSection> expandedSections = new HashSet<NodeStorageSection>();
         private readonly HashSet<string> expandedKeys = new HashSet<string>(StringComparer.Ordinal);
         private readonly List<GameObject> spawnedEntries = new List<GameObject>();
-        private readonly List<GameObject> spawnedMassButtons = new List<GameObject>();
 
         private NodeInspectorSettings settings;
         private NodeInspectorTheme theme;
@@ -29,7 +36,6 @@ namespace KingdomNodeInspector.UI
         private TextMeshProUGUI titleText;
         private TextMeshProUGUI subtitleText;
         private TextMeshProUGUI countText;
-        private RectTransform massEditRow;
         private RectTransform listContent;
         private ScrollRect scrollRect;
         private Button expandCollapseBtn;
@@ -77,6 +83,7 @@ namespace KingdomNodeInspector.UI
 
             confirmDialog?.Hide();
             targetElement = element;
+            expandedSections.Clear();
             expandedKeys.Clear();
             RefreshNow();
             if (scrollRect)
@@ -112,18 +119,34 @@ namespace KingdomNodeInspector.UI
                 return;
             }
 
-            nextRefreshTime = Time.unscaledTime + (settings != null ? settings.RefreshInterval : 0.5f);
+            nextRefreshTime = Time.unscaledTime + (settings != null ? settings.RefreshInterval : 3.0f);
 
             UpdateHeader();
             var items = NodeInventoryAccessor.CollectItems(targetElement);
-            PruneExpandedKeys(items);
-            RebuildMassEditBar(items);
-            RebuildList(items);
+            var grouped = GroupItemsBySection(items);
+            PruneExpandedState(items, grouped);
+            UpdateMassEditBar(items, grouped);
+            RebuildList(items, grouped);
         }
 
         private void Update()
         {
             if (targetElement == null)
+                return;
+
+            if (!NodeInventoryAccessor.IsInActiveWorkspace(targetElement))
+            {
+                Close();
+                return;
+            }
+
+            if (settings == null || !settings.AutoRefresh)
+                return;
+
+            if (IsConfirmOpen)
+                return;
+
+            if (Mouse.current != null && Mouse.current.leftButton.isPressed)
                 return;
 
             if (Time.unscaledTime >= nextRefreshTime)
@@ -150,9 +173,8 @@ namespace KingdomNodeInspector.UI
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
             panelRect.anchorMax = new Vector2(0.5f, 0.5f);
             panelRect.pivot = new Vector2(0.5f, 0.5f);
-            panelRect.sizeDelta = new Vector2(660f, 620f);
+            panelRect.sizeDelta = new Vector2(700f, 620f);
 
-            // Swallow clicks on the panel so they don't close the backdrop.
             var swallow = panel.GetComponent<Button>();
             swallow.transition = Selectable.Transition.None;
             swallow.navigation = new Navigation { mode = Navigation.Mode.None };
@@ -186,8 +208,9 @@ namespace KingdomNodeInspector.UI
             var bar = new GameObject("HeaderBar", typeof(RectTransform), typeof(Image), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
             bar.transform.SetParent(parent, worldPositionStays: false);
             var le = bar.GetComponent<LayoutElement>();
-            le.preferredHeight = 56f;
-            le.minHeight = 56f;
+            le.preferredHeight = 62f;
+            le.minHeight = 62f;
+            le.flexibleHeight = 0f;
 
             bar.GetComponent<Image>().color = NodeInspectorTheme.HeaderBar;
 
@@ -203,10 +226,10 @@ namespace KingdomNodeInspector.UI
             var iconFrame = new GameObject("BuildingIconFrame", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
             iconFrame.transform.SetParent(bar.transform, worldPositionStays: false);
             var iconFrameLe = iconFrame.GetComponent<LayoutElement>();
-            iconFrameLe.preferredWidth = 40f;
-            iconFrameLe.minWidth = 40f;
-            iconFrameLe.preferredHeight = 40f;
-            iconFrameLe.minHeight = 40f;
+            iconFrameLe.preferredWidth = 42f;
+            iconFrameLe.minWidth = 42f;
+            iconFrameLe.preferredHeight = 42f;
+            iconFrameLe.minHeight = 42f;
             iconFrame.GetComponent<Image>().color = NodeInspectorTheme.Well;
 
             var iconObj = new GameObject("Icon", typeof(RectTransform), typeof(Image));
@@ -224,25 +247,32 @@ namespace KingdomNodeInspector.UI
             titleCol.transform.SetParent(bar.transform, worldPositionStays: false);
             var titleColLe = titleCol.GetComponent<LayoutElement>();
             titleColLe.flexibleWidth = 1f;
-            titleColLe.preferredHeight = 40f;
+            titleColLe.preferredHeight = 46f;
+            titleColLe.minHeight = 46f;
 
             var titleLayout = titleCol.GetComponent<VerticalLayoutGroup>();
             titleLayout.spacing = 2f;
+            titleLayout.childAlignment = TextAnchor.MiddleLeft;
             titleLayout.childControlWidth = true;
             titleLayout.childControlHeight = true;
             titleLayout.childForceExpandWidth = true;
             titleLayout.childForceExpandHeight = false;
 
-            titleText = theme.CreateText(titleCol.transform, "Title", "Node Inspector", 20f, NodeInspectorTheme.Gold);
-            titleText.fontStyle = FontStyles.Bold;
+            titleText = theme.CreateText(titleCol.transform, "Title", "Node Inspector", 18f, NodeInspectorTheme.Gold);
             titleText.alignment = TextAlignmentOptions.MidlineLeft;
+            titleText.textWrappingMode = TextWrappingModes.NoWrap;
+            titleText.overflowMode = TextOverflowModes.Ellipsis;
             var titleLe = titleText.gameObject.AddComponent<LayoutElement>();
-            titleLe.preferredHeight = 22f;
+            titleLe.preferredHeight = 26f;
+            titleLe.minHeight = 24f;
 
-            subtitleText = theme.CreateText(titleCol.transform, "Subtitle", "", 13f, NodeInspectorTheme.SecondaryInk);
+            subtitleText = theme.CreateText(titleCol.transform, "Subtitle", "", 12.5f, NodeInspectorTheme.SecondaryInk);
             subtitleText.alignment = TextAlignmentOptions.MidlineLeft;
+            subtitleText.textWrappingMode = TextWrappingModes.NoWrap;
+            subtitleText.overflowMode = TextOverflowModes.Ellipsis;
             var subLe = subtitleText.gameObject.AddComponent<LayoutElement>();
-            subLe.preferredHeight = 16f;
+            subLe.preferredHeight = 18f;
+            subLe.minHeight = 16f;
 
             var refreshBtn = theme.CreateIconButton(
                 bar.transform,
@@ -278,50 +308,52 @@ namespace KingdomNodeInspector.UI
             var bar = new GameObject("MassEditBar", typeof(RectTransform), typeof(Image), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
             bar.transform.SetParent(parent, worldPositionStays: false);
             var le = bar.GetComponent<LayoutElement>();
-            le.preferredHeight = 40f;
-            le.minHeight = 40f;
+            le.preferredHeight = 42f;
+            le.minHeight = 42f;
+            le.flexibleHeight = 0f;
 
             bar.GetComponent<Image>().color = NodeInspectorTheme.Toolbar;
 
             var layout = bar.GetComponent<HorizontalLayoutGroup>();
-            layout.padding = new RectOffset(10, 10, 5, 5);
-            layout.spacing = 8f;
+            layout.padding = new RectOffset(10, 10, 6, 6);
+            layout.spacing = 10f;
             layout.childAlignment = TextAnchor.MiddleLeft;
             layout.childControlWidth = true;
             layout.childControlHeight = true;
             layout.childForceExpandWidth = false;
-            layout.childForceExpandHeight = true;
+            layout.childForceExpandHeight = false;
 
             countText = theme.CreateText(bar.transform, "ItemCount", "0 items", 14f, NodeInspectorTheme.SecondaryInk);
             countText.alignment = TextAlignmentOptions.MidlineLeft;
+            countText.textWrappingMode = TextWrappingModes.NoWrap;
             var countLe = countText.gameObject.AddComponent<LayoutElement>();
-            countLe.preferredWidth = 105f;
-            countLe.minWidth = 72f;
+            countLe.preferredWidth = 110f;
+            countLe.minWidth = 80f;
+            countLe.preferredHeight = 30f;
+            countLe.minHeight = 30f;
 
-            expandCollapseBtn = theme.CreateTextButton(bar.transform, "ExpandAllBtn", "Expand All", 13.5f, isDanger: false, ToggleExpandAll);
+            var spacer = new GameObject("Spacer", typeof(RectTransform), typeof(LayoutElement));
+            spacer.transform.SetParent(bar.transform, worldPositionStays: false);
+            var spacerLe = spacer.GetComponent<LayoutElement>();
+            spacerLe.flexibleWidth = 1f;
+            spacerLe.preferredHeight = 30f;
+
+            expandCollapseBtn = theme.CreateTextButton(bar.transform, "ExpandAllBtn", "Expand All", 13f, isDanger: false, ToggleExpandAll);
             expandCollapseLabel = expandCollapseBtn.GetComponentInChildren<TextMeshProUGUI>();
             var expLe = expandCollapseBtn.gameObject.AddComponent<LayoutElement>();
-            expLe.preferredWidth = 96f;
-            expLe.minWidth = 86f;
+            expLe.preferredWidth = 112f;
+            expLe.minWidth = 104f;
+            expLe.preferredHeight = 30f;
+            expLe.minHeight = 30f;
+            expLe.flexibleHeight = 0f;
 
-            var dynamicGroup = new GameObject("ScopedPurgeGroup", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
-            dynamicGroup.transform.SetParent(bar.transform, worldPositionStays: false);
-            massEditRow = (RectTransform)dynamicGroup.transform;
-            var dynLe = dynamicGroup.GetComponent<LayoutElement>();
-            dynLe.flexibleWidth = 1f;
-
-            var dynLayout = dynamicGroup.GetComponent<HorizontalLayoutGroup>();
-            dynLayout.spacing = 6f;
-            dynLayout.childAlignment = TextAnchor.MiddleRight;
-            dynLayout.childControlWidth = true;
-            dynLayout.childControlHeight = true;
-            dynLayout.childForceExpandWidth = false;
-            dynLayout.childForceExpandHeight = true;
-
-            purgeAllBtn = theme.CreateTextButton(bar.transform, "PurgeAllBtn", "Purge All", 14f, isDanger: true, RequestPurgeAll);
+            purgeAllBtn = theme.CreateTextButton(bar.transform, "PurgeAllBtn", "Purge All", 13.5f, isDanger: true, RequestPurgeAll);
             var purgeLe = purgeAllBtn.gameObject.AddComponent<LayoutElement>();
-            purgeLe.preferredWidth = 104f;
+            purgeLe.preferredWidth = 106f;
             purgeLe.minWidth = 96f;
+            purgeLe.preferredHeight = 30f;
+            purgeLe.minHeight = 30f;
+            purgeLe.flexibleHeight = 0f;
         }
 
         private void BuildScrollList(Transform parent)
@@ -357,8 +389,8 @@ namespace KingdomNodeInspector.UI
             listContent.sizeDelta = Vector2.zero;
 
             var contentLayout = content.GetComponent<VerticalLayoutGroup>();
-            contentLayout.spacing = 2f;
-            contentLayout.padding = new RectOffset(2, 2, 2, 2);
+            contentLayout.spacing = 4f;
+            contentLayout.padding = new RectOffset(4, 4, 4, 4);
             contentLayout.childControlWidth = true;
             contentLayout.childControlHeight = true;
             contentLayout.childForceExpandWidth = true;
@@ -437,7 +469,9 @@ namespace KingdomNodeInspector.UI
             }
         }
 
-        private void RebuildMassEditBar(IReadOnlyList<NodeStoredItem> items)
+        private void UpdateMassEditBar(
+            IReadOnlyList<NodeStoredItem> items,
+            Dictionary<NodeStorageSection, List<NodeStoredItem>> grouped)
         {
             if (countText)
                 countText.text = items.Count == 1 ? "1 item" : $"{items.Count} items";
@@ -450,45 +484,15 @@ namespace KingdomNodeInspector.UI
 
             if (expandCollapseLabel)
             {
-                bool allExpanded = items.Count > 0 && expandedKeys.Count >= items.Count;
-                expandCollapseLabel.text = allExpanded ? "Collapse All" : "Expand All";
-            }
-
-            for (int i = 0; i < spawnedMassButtons.Count; i++)
-            {
-                if (spawnedMassButtons[i])
-                    Destroy(spawnedMassButtons[i]);
-            }
-
-            spawnedMassButtons.Clear();
-
-            var groups = items.GroupBy(i => i.Kind).ToList();
-            if (groups.Count <= 1 || !massEditRow)
-                return;
-
-            int maxButtons = Math.Min(groups.Count, 2);
-            for (int i = 0; i < maxButtons; i++)
-            {
-                var kind = groups[i].Key;
-                int groupCount = groups[i].Count();
-                string groupLabel = NodeInventoryAccessor.GetKindGroupLabel(kind);
-
-                var btn = theme.CreateTextButton(
-                    massEditRow,
-                    "Purge_" + kind,
-                    $"Purge {groupLabel} ({groupCount})",
-                    13f,
-                    isDanger: false,
-                    () => RequestPurgeByKind(kind, groupLabel, groupCount));
-
-                var le = btn.gameObject.AddComponent<LayoutElement>();
-                le.preferredWidth = 148f;
-                le.minWidth = 110f;
-                spawnedMassButtons.Add(btn.gameObject);
+                int activeSections = CountActiveSections(grouped);
+                bool allSectionsOpen = activeSections > 0 && expandedSections.Count >= activeSections;
+                expandCollapseLabel.text = allSectionsOpen ? "Collapse All" : "Expand All";
             }
         }
 
-        private void RebuildList(IReadOnlyList<NodeStoredItem> items)
+        private void RebuildList(
+            IReadOnlyList<NodeStoredItem> items,
+            Dictionary<NodeStorageSection, List<NodeStoredItem>> grouped)
         {
             float savedScroll = scrollRect ? scrollRect.verticalNormalizedPosition : 1f;
 
@@ -520,23 +524,48 @@ namespace KingdomNodeInspector.UI
             }
             else
             {
-                for (int i = 0; i < items.Count; i++)
+                for (int s = 0; s < SectionOrder.Length; s++)
                 {
-                    NodeStoredItem entry = items[i];
-                    NodeItemDetails details = NodeItemDetailsBuilder.Build(entry.Item);
-                    bool isExpanded = expandedKeys.Contains(entry.StableKey);
+                    NodeStorageSection section = SectionOrder[s];
+                    List<NodeStoredItem> sectionItems = grouped[section];
+                    if (sectionItems.Count == 0)
+                        continue;
 
-                    var view = new NodeInspectorEntryView(
+                    string sectionLabel = NodeInventoryAccessor.GetSectionLabel(section);
+                    bool sectionExpanded = expandedSections.Contains(section);
+
+                    var sectionHeader = new NodeInspectorSectionView(
                         listContent,
                         theme,
-                        entry,
-                        details,
-                        i,
-                        isExpanded,
-                        () => ToggleEntry(entry.StableKey),
-                        () => RequestDeleteSingle(entry, details));
+                        sectionLabel,
+                        sectionItems.Count,
+                        sectionExpanded,
+                        () => ToggleSection(section),
+                        () => RequestPurgeSection(section, sectionLabel, sectionItems.Count));
 
-                    spawnedEntries.Add(view.Root);
+                    spawnedEntries.Add(sectionHeader.Root);
+
+                    if (!sectionExpanded)
+                        continue;
+
+                    for (int i = 0; i < sectionItems.Count; i++)
+                    {
+                        NodeStoredItem entry = sectionItems[i];
+                        NodeItemDetails details = NodeItemDetailsBuilder.Build(entry.Item);
+                        bool isExpanded = expandedKeys.Contains(entry.StableKey);
+
+                        var view = new NodeInspectorEntryView(
+                            listContent,
+                            theme,
+                            entry,
+                            details,
+                            i,
+                            isExpanded,
+                            () => ToggleEntry(entry.StableKey),
+                            () => RequestDeleteSingle(entry, details));
+
+                        spawnedEntries.Add(view.Root);
+                    }
                 }
             }
 
@@ -544,6 +573,16 @@ namespace KingdomNodeInspector.UI
             LayoutRebuilder.ForceRebuildLayoutImmediate(listContent);
             if (scrollRect)
                 scrollRect.verticalNormalizedPosition = Mathf.Clamp01(savedScroll);
+        }
+
+        private void ToggleSection(NodeStorageSection section)
+        {
+            if (expandedSections.Contains(section))
+                expandedSections.Remove(section);
+            else
+                expandedSections.Add(section);
+
+            RefreshNow();
         }
 
         private void ToggleEntry(string stableKey)
@@ -562,12 +601,20 @@ namespace KingdomNodeInspector.UI
             if (items.Count == 0)
                 return;
 
-            bool allExpanded = expandedKeys.Count >= items.Count;
+            var grouped = GroupItemsBySection(items);
+            int activeSections = CountActiveSections(grouped);
+            bool allSectionsOpen = activeSections > 0 && expandedSections.Count >= activeSections;
+
+            expandedSections.Clear();
             expandedKeys.Clear();
-            if (!allExpanded)
+
+            if (!allSectionsOpen)
             {
-                for (int i = 0; i < items.Count; i++)
-                    expandedKeys.Add(items[i].StableKey);
+                for (int i = 0; i < SectionOrder.Length; i++)
+                {
+                    if (grouped[SectionOrder[i]].Count > 0)
+                        expandedSections.Add(SectionOrder[i]);
+                }
             }
 
             RefreshNow();
@@ -575,7 +622,7 @@ namespace KingdomNodeInspector.UI
 
         private void RequestDeleteSingle(NodeStoredItem entry, NodeItemDetails details)
         {
-            if (settings != null && settings.ConfirmSingleDelete)
+            if (settings == null || settings.ConfirmSingleDelete)
             {
                 string itemName = details?.DisplayName ?? entry.Item?.Type?.Identifier ?? "this item";
                 confirmDialog.Show(
@@ -613,7 +660,7 @@ namespace KingdomNodeInspector.UI
             string noun = items.Count == 1 ? "item" : "items";
             confirmDialog.Show(
                 "Confirm Mass Purge",
-                $"Permanently purge all <color=#E86C60>{items.Count} {noun}</color> from <color=#E2BD77>{nodeName}</color>?\n\nThis removes every buffered and internal entry in this node and cannot be undone.",
+                $"Permanently purge all <color=#E86C60>{items.Count} {noun}</color> from <color=#E2BD77>{nodeName}</color>?\n\nThis removes every input, output, and internal entry in this node and cannot be undone.",
                 $"Purge All ({items.Count})",
                 PerformPurgeAll);
         }
@@ -624,36 +671,77 @@ namespace KingdomNodeInspector.UI
                 return;
 
             int removed = NodeInventoryAccessor.PurgeAll(targetElement);
+            expandedSections.Clear();
             expandedKeys.Clear();
             RefreshNow();
             ShowStatus($"Node Inspector: Purged {removed} {(removed == 1 ? "item" : "items")} from {NodeInventoryAccessor.GetBuildingTitle(targetElement)}.");
         }
 
-        private void RequestPurgeByKind(NodeStoredItemKind kind, string groupLabel, int count)
+        private void RequestPurgeSection(NodeStorageSection section, string sectionLabel, int count)
         {
             if (targetElement == null || count <= 0)
                 return;
 
             string nodeName = NodeInventoryAccessor.GetBuildingTitle(targetElement);
+            string noun = count == 1 ? "item" : "items";
             confirmDialog.Show(
-                $"Confirm Purge {groupLabel}",
-                $"Permanently purge <color=#E86C60>{count}</color> {groupLabel.ToLowerInvariant()} from <color=#E2BD77>{nodeName}</color>?\n\nThis action cannot be undone.",
-                $"Purge {groupLabel}",
-                () => PerformPurgeByKind(kind, groupLabel));
+                $"Confirm Purge {sectionLabel}",
+                $"Permanently purge all <color=#E86C60>{count} {noun}</color> in <color=#E2BD77>{sectionLabel}</color> from <color=#E2BD77>{nodeName}</color>?\n\nThis action cannot be undone.",
+                $"Purge {sectionLabel}",
+                () => PerformPurgeSection(section, sectionLabel));
         }
 
-        private void PerformPurgeByKind(NodeStoredItemKind kind, string groupLabel)
+        private void PerformPurgeSection(NodeStorageSection section, string sectionLabel)
         {
             if (targetElement == null)
                 return;
 
-            int removed = NodeInventoryAccessor.PurgeByKind(targetElement, kind);
+            int removed = NodeInventoryAccessor.PurgeBySection(targetElement, section);
+            expandedSections.Remove(section);
             RefreshNow();
-            ShowStatus($"Node Inspector: Purged {removed} {groupLabel.ToLowerInvariant()} from {NodeInventoryAccessor.GetBuildingTitle(targetElement)}.");
+            ShowStatus($"Node Inspector: Purged {removed} {sectionLabel.ToLowerInvariant()} {(removed == 1 ? "item" : "items")} from {NodeInventoryAccessor.GetBuildingTitle(targetElement)}.");
         }
 
-        private void PruneExpandedKeys(IReadOnlyList<NodeStoredItem> items)
+        private static Dictionary<NodeStorageSection, List<NodeStoredItem>> GroupItemsBySection(IReadOnlyList<NodeStoredItem> items)
         {
+            var grouped = new Dictionary<NodeStorageSection, List<NodeStoredItem>>
+            {
+                [NodeStorageSection.Inputs] = new List<NodeStoredItem>(),
+                [NodeStorageSection.Outputs] = new List<NodeStoredItem>(),
+                [NodeStorageSection.Internal] = new List<NodeStoredItem>()
+            };
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                NodeStorageSection section = NodeInventoryAccessor.GetSection(items[i].Kind);
+                grouped[section].Add(items[i]);
+            }
+
+            return grouped;
+        }
+
+        private static int CountActiveSections(Dictionary<NodeStorageSection, List<NodeStoredItem>> grouped)
+        {
+            int count = 0;
+            for (int i = 0; i < SectionOrder.Length; i++)
+            {
+                if (grouped[SectionOrder[i]].Count > 0)
+                    count++;
+            }
+
+            return count;
+        }
+
+        private void PruneExpandedState(
+            IReadOnlyList<NodeStoredItem> items,
+            Dictionary<NodeStorageSection, List<NodeStoredItem>> grouped)
+        {
+            for (int i = 0; i < SectionOrder.Length; i++)
+            {
+                if (grouped[SectionOrder[i]].Count == 0)
+                    expandedSections.Remove(SectionOrder[i]);
+            }
+
             if (expandedKeys.Count == 0)
                 return;
 

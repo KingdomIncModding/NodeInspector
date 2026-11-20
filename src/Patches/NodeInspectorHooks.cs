@@ -21,7 +21,6 @@ namespace KingdomNodeInspector.Patches
             string modId = NodeInspectorPlugin.PluginId;
             subscriptions.Add(hooks.Subscribe(modId, GameHookPoints.Escape, OnEscape, after: null, priority: 100));
             subscriptions.Add(hooks.Subscribe(modId, GameHookPoints.Cancel, OnCancel, after: null, priority: 100));
-            subscriptions.Add(hooks.Subscribe(modId, GameHookPoints.BuildingClick, OnBuildingClick, after: null, priority: 100));
             subscriptions.Add(hooks.Subscribe(modId, GameHookPoints.WorkspaceShown, before: null, after: OnWorkspaceChanged, priority: 0));
             subscriptions.Add(hooks.Subscribe(modId, GameHookPoints.UiVisibility, before: null, after: OnUiVisibilityChanged, priority: 0));
         }
@@ -47,27 +46,11 @@ namespace KingdomNodeInspector.Patches
             if (call.IsCancelled)
                 return;
 
-            if (plugin.IsInspectPickMode)
-            {
-                plugin.SetInspectPickMode(false, fromUser: false);
-                call.Cancel();
-                return;
-            }
-
             if (plugin.IsPopupOpen)
             {
                 plugin.CloseInspector();
                 call.Cancel();
             }
-        }
-
-        private void OnBuildingClick(GameHookCall call)
-        {
-            if (call.IsCancelled || !plugin.IsInspectPickMode)
-                return;
-
-            if (plugin.TryInspectFromPickClick())
-                call.Cancel();
         }
 
         private void OnWorkspaceChanged(GameHookCall call)
