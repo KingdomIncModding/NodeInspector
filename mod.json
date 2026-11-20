@@ -8,9 +8,9 @@
                        "platform":  "GitHub",
                        "owner":  "KingdomIncModding",
                        "name":  "NodeInspector",
-                       "url":  null,
-                       "branch":  null,
-                       "visibility":  null,
+                       "url":  "https://github.com/KingdomIncModding/NodeInspector",
+                       "branch":  "main",
+                       "visibility":  "public",
                        "topics":  [
                                       "kingdom-inc",
                                       "kingdom-inc-mod",
